@@ -86,7 +86,7 @@ Params newTaskSolver::solve() {
         if (size <= 1) {
             continue;
         }
-        LCM = 1ll * LCM * (size - 1) / std::__gcd(LCM, 1ll * size - 1);
+        LCM = 1ll * LCM * (size - 1) / gcd(LCM, 1ll * size - 1);
         if (LCM > maxLCM) {
             throw std::runtime_error("Too big nets");
         }
@@ -151,7 +151,7 @@ Params newTaskSolver::solve() {
     }
 
     int debug_interval = -1;
-    if (debug_t != 0) {
+    if (debug_t != -1) {
         debug_interval = debug_t * 1e6;
     }
 
@@ -213,5 +213,6 @@ void newTaskSolver::init(const py::str& input_path,
     get_value(kwargs, seed_name, seed, DEFAULT_SEED);
 
     get_value_double(kwargs, debug_t_name, debug_t, DEFAULT_DEBUG_T);
+
     get_value(kwargs, defaults_name, defaults, DEFAULT_DEFAULTS);
 }

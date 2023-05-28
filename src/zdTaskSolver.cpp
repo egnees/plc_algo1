@@ -83,7 +83,7 @@ Params zdTaskSolver::solve() {
         if (size <= 1) {
             continue;
         }
-        LCM = 1ll * LCM * (size - 1) / std::__gcd(LCM, 1ll * size - 1);
+        LCM = 1ll * LCM * (size - 1) / gcd(LCM, 1ll * size - 1);
         if (LCM > maxLCM) {
             throw std::runtime_error("Too big nets");
         }

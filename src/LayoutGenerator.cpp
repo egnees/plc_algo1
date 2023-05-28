@@ -37,7 +37,7 @@ Params LayoutGenerator::estimate() {
 
 Params LayoutGenerator::solve() {
     if (seed == -1) {
-        long unsigned int tmp = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+        uint32_t tmp = std::chrono::high_resolution_clock::now().time_since_epoch().count();
         std::mt19937 rnd{tmp};
         seed = rnd();
     }

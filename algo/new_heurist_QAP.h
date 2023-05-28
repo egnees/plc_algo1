@@ -39,7 +39,7 @@ public:
 						   int max_iters_new = -1, int seed_new = -1,
 						   bool verbose = false, int debug_t = -1); // time in seconds or iters
 
-	std::vector<std::pair<double, std::vector<int>>> get_debug_info() const;
+	[[nodiscard]] std::vector<std::pair<double, std::vector<int>>> get_debug_info() const;
 
 private:
 	void init_all(int n1_new, int n2_new, int tabu_tenure_new, int S_new,
@@ -115,7 +115,7 @@ private:
 	ans_t *C;
 
 	// stop condition
-	clock_t max_time{-1};
+	clock_t max_time{0};
 	int max_iters{-1};
 	bool use_time{false};
 	clock_t start_clock{0};

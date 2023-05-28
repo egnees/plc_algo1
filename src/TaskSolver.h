@@ -20,6 +20,13 @@ void get_value_double(const py::kwargs& kwargs, const std::string& name, double&
 
 void get_value_nodef(const py::kwargs& kwargs, const std::string& name, int& val);
 
+template<typename T>
+T gcd(T a, T b) {
+    if (a == 0)
+        return b;
+    return gcd(b % a, a);
+}
+
 struct Param {
     std::string key;
     std::string value;
@@ -137,7 +144,7 @@ protected:
     int pin_count{0};
     int net_count{0};
 
-    const double DEFAULT_DEBUG_T{0};
+    const double DEFAULT_DEBUG_T = -1.0;
 
     int screen_width{1280-360};
     int screen_height{720-100};

@@ -224,7 +224,7 @@ std::vector<int> ZD_heurist_QAP1::solve(int time, int seed, int debug_t, double 
 
         if (debug_interval != -1) {
             clock_t cur = clock();
-            if ((cur - last) >= debug_interval) {
+            if ((int)(cur - last) >= debug_interval) {
                 debug_info.emplace_back(start_t + ((double)(cur - start)) / 1e6, std::vector<int>{bfs.p, bfs.p + n});
                 last = cur;
             }

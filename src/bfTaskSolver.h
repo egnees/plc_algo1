@@ -22,7 +22,6 @@ private:
     int cols;
     int step_x;
     int step_y;
-    int debug_interval;
 
     [[nodiscard]] double calc_twl() const;
 };

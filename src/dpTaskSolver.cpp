@@ -33,12 +33,12 @@ int dpTaskSolver::get_lcm() const {
         if (size <= 1) {
             continue;
         }
-        LCM = 1ll * LCM * (size - 1) / std::__gcd(LCM, 1ll * size - 1);
+        LCM = 1ll * LCM * (size - 1) / gcd(LCM, (long long)(size - 1));
         if (LCM > maxLCM) {
             throw std::runtime_error("Too big nets");
         }
     }
-    return LCM;
+    return (int) LCM;
 }
 
 std::pair<mut_t, pin_add_t> dpTaskSolver::get_input(int LCM) const {

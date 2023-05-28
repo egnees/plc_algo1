@@ -9,6 +9,8 @@
 #include "LayoutGenerator.h"
 #include "newTaskSolver.h"
 #include "dpTaskSolver.h"
+#include "gotoSolver.h"
+#include "newGotoSolver.h"
 
 #include <pybind11/stl.h>
 #include <random>
@@ -35,6 +37,8 @@ std::string zvi_drezner_name{"zd_heurist"};
 std::string layout_generator_name{"layout_gen"};
 std::string new_heurist_name{"new_heurist"};
 std::string dp_name{"dp_linear"};
+std::string goto_name{"goto"};
+std::string new_goto_name{"new_goto"};
 
 std::vector<std::string> solver_names = {
         idle_name,
@@ -42,7 +46,9 @@ std::vector<std::string> solver_names = {
         zvi_drezner_name,
         layout_generator_name,
         new_heurist_name,
-        dp_name
+        dp_name,
+        goto_name,
+        new_goto_name
 };
 
 py::list solvers() {
@@ -63,7 +69,11 @@ std::unique_ptr<TaskSolver> create_solver(const py::str& solver_name) {
         return std::make_unique<newTaskSolver>();
     } else if (name == dp_name) {
         return std::make_unique<dpTaskSolver>();
-    }  else {
+    } else if (name == goto_name) {
+        return std::make_unique<GotoTaskSolver>();
+    } else if (name == new_goto_name) {
+        return std::make_unique<newGotoTaskSolver>();
+    } else {
         throw std::runtime_error("No such solver");
     }
 }

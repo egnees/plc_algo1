@@ -51,8 +51,6 @@ Layout init_layout_from_file(const std::string &path_to_layout) {
     const int BUFLEN = 1024;
     char temp_buffer[BUFLEN];
 
-    Layout layout;
-
     fscanf(file, "%s", temp_buffer); // devices
     int device_count;
     fscanf(file, "%d", &device_count);
@@ -295,8 +293,8 @@ Layout random_cluster_layout(
 ) {
     std::mt19937 rnd{(uint32_t) seed};
 
-    int unit_bbox_height = (unit_bbox_height + outer_rows - 1) / outer_rows;
-    int unit_bbox_width = (unit_bbox_width + outer_cols - 1) / outer_cols;
+    int unit_bbox_height = (bbox_height + outer_rows - 1) / outer_rows;
+    int unit_bbox_width = (bbox_width + outer_cols - 1) / outer_cols;
 
     int total_pins_count = 0;
 
@@ -591,7 +589,7 @@ double TaskSolver::calc_metric(std::function<double(const Net *)> &&metric) cons
 }
 
 void TaskSolver::add_debug_info(Params& p, double t, std::function<double(const Net*)>&& metric) const {
-    p.emplace_back("di_" + std::to_string(t), std::to_string(calc_metric(std::move(metric))), false);
+    p.push_back({"di_" + std::to_string(t), std::to_string(calc_metric(std::move(metric))), false});
 }
 
 double calc_half_p(const Net* net) {

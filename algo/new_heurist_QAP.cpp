@@ -196,7 +196,7 @@ void NewHeuristQAP::work() {
 
         if (debug_interval != -1) {
             clock_t cur_t = clock();
-            if (cur_t - last_t >= debug_interval) {
+            if ((int)(cur_t - last_t) >= debug_interval) {
                 debug_info.emplace_back((cur_t - start_clock) / 1e6, std::vector<int>{best->perm, best->perm + n});
                 last_t = cur_t;
             }
@@ -205,9 +205,10 @@ void NewHeuristQAP::work() {
         ++iter;
     }
 
+    sort_M();
+    upd_best();
+
     if (debug_interval != -1) {
-        sort_M();
-        upd_best();
         debug_info.emplace_back((clock() - start_clock) / 1e6, std::vector<int>{best->perm, best->perm + n});
     }
 }

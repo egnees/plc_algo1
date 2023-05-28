@@ -1,4 +1,4 @@
-#include "goto.h"
+#include "new_goto.h"
 
 #include <numeric>
 #include <cstring>
@@ -7,7 +7,7 @@
 
 // random
 
-namespace Goto {
+namespace NewGoto {
 
     enum {
         RANDOM_INT_LEFT = 0,
@@ -16,10 +16,11 @@ namespace Goto {
 
     std::default_random_engine random_gen{};
     std::uniform_int_distribution<> int_dist(RANDOM_INT_LEFT, RANDOM_INT_RIGHT);
+    std::uniform_real_distribution<> real_dist(0, 1);
 
-}
+} // namespace NewGoto
 
-void Goto::get_best_k(const ans_t *x, const ans_t *y, int n, int m, int *ans_i, int *ans_j, int k) {
+void NewGoto::get_best_k(const ans_t *x, const ans_t *y, int n, int m, int *ans_i, int *ans_j, int k) {
     // size(x) = size(ans_i) = n
     // size(y) = size(ans_j) = m
     // x and y sorted
@@ -43,7 +44,7 @@ void Goto::get_best_k(const ans_t *x, const ans_t *y, int n, int m, int *ans_i, 
     }
 }
 
-namespace Goto {
+namespace NewGoto {
 
     void set_seed(uint32_t seed) {
         random_gen.seed(seed);
@@ -53,16 +54,20 @@ namespace Goto {
         return int_dist(random_gen) % (r - l + 1) + l;
     }
 
-} // namespace Goto
+    float rand_real() {
+        return real_dist(random_gen);
+    }
+
+} // namespace NewGoto
+
+using namespace NewGoto;
 
 // constructor
 
-using namespace Goto;
-
-GotoHeurist::GotoHeurist(int m_, int n_, int stepx, int stepy, 
-                const pin_acc_t& leftx, const pin_acc_t& samex,
-                const pin_acc_t& upy, const pin_acc_t& samey,
-                const mul_t& mul) {
+NewGotoHeurist::NewGotoHeurist(int m_, int n_, int stepx, int stepy,
+                         const pin_acc_t& leftx, const pin_acc_t& samex,
+                         const pin_acc_t& upy, const pin_acc_t& samey,
+                         const mul_t& mul) {
     m = m_;
     n = n_;
     slots = m * n;
@@ -75,7 +80,7 @@ GotoHeurist::GotoHeurist(int m_, int n_, int stepx, int stepy,
     for (int i = 0; i < devices; ++i) {
         for (int j = 0; j < devices; ++j) {
             int q = idx_dev(i, j);
-            
+
             left_x[q] = leftx[i][j];
             same_x[q] = samex[i][j];
             right_x[q] = leftx[j][i];
@@ -85,7 +90,7 @@ GotoHeurist::GotoHeurist(int m_, int n_, int stepx, int stepy,
             down_y[q] = upy[j][i];
 
             w[q] = mul[i][j];
-        } 
+        }
     }
 
     for (int s = 0; s < slots; ++s) {
@@ -98,13 +103,13 @@ GotoHeurist::GotoHeurist(int m_, int n_, int stepx, int stepy,
     best.twl = calc_twl(best);
 }
 
-GotoHeurist::~GotoHeurist() {
+NewGotoHeurist::~NewGotoHeurist() {
     deallocate_permanent();
 }
 
 // memory management
 
-void GotoHeurist::allocate_permanent() {
+void NewGotoHeurist::allocate_permanent() {
     help_ans_i = new int[n];
     help_ans_j = new int[m];
 
@@ -134,7 +139,7 @@ void GotoHeurist::allocate_permanent() {
     best.rev_perm = new int[slots];
 }
 
-void GotoHeurist::deallocate_permanent() {
+void NewGotoHeurist::deallocate_permanent() {
     delete[] left_x;
     delete[] same_x;
     delete[] right_x;
@@ -159,7 +164,7 @@ void GotoHeurist::deallocate_permanent() {
     delete[] help_ans_j;
 }
 
-void GotoHeurist::allocate_temp() {
+void NewGotoHeurist::allocate_temp() {
     median_neib = new int[eps];
     median_vals = new ans_t[eps];
 
@@ -171,9 +176,19 @@ void GotoHeurist::allocate_temp() {
         sols[i].perm = new int[devices];
         sols[i].rev_perm = new int[slots];
     }
+
+    M = new Solution[S + 2];
+    for (int i = 0; i < S + 2; ++i) {
+        M[i].perm = new int[devices];
+        M[i].rev_perm = new int[slots];
+        M[i].prior = new float[devices];
+    }
+    gark_buf = new Solution*[GARK_BUF_MAX];
+
+    init_util();
 }
 
-void GotoHeurist::deallocate_temp() {
+void NewGotoHeurist::deallocate_temp() {
     delete[] median_neib;
 
     delete[] temp_ans_i;
@@ -188,106 +203,32 @@ void GotoHeurist::deallocate_temp() {
     }
 
     delete[] sols;
-}
 
-// SORG
-GotoHeurist::Solution GotoHeurist::SORG() {
-    int is_placed[devices]; // placed[device]
-    int is_taken[slots]; // taken[slot]
-    std::memset(is_placed, 0, devices * sizeof(int));
-    std::memset(is_taken, 0, slots * sizeof(int));
-
-    ans_t IOC[devices];
-    std::memset(IOC, 0, devices * sizeof(ans_t));
-
-    for (int i = 0; i < devices; ++i) {
-        for (int j = 0; j < devices; ++j) {
-            if (i != j) {
-                IOC[i] -= w[idx_dev(i, j)];
-            }
-        }
+    for (int i = 0; i < S + 2; ++i) {
+        delete[] M[i].perm;
+        delete[] M[i].rev_perm;
+        delete[] M[i].prior;
     }
 
-    Solution sol{
-        new int[devices], // slots == devices
-        new int[slots],
-        0
-    };
+    delete[] M;
 
-    for (int i = 0; i < slots; ++i) {
-        int dev1{-1}, dev2{-1};
-        for (int j = 0; j < devices; ++j) {
-            if (is_placed[j]) {
-                continue;
-            }
-            if (dev1 == -1) {
-                dev1 = j;
-                continue;
-            }
-            if (IOC[j] >= IOC[dev1]) {
-                dev2 = dev1;
-                dev1 = j;
-            } else if (dev2 == -1 || IOC[j] > IOC[dev2]) {
-                dev2 = j;
-            }
-        } // got two devices with highest IOC
+    delete[] gark_buf;
 
-        int dev{dev1};
-
-        if (dev2 != -1 && rand_int(0, 1)) {
-            dev = dev2;
-        }
-
-        int slot{-1};
-        ans_t best_cost{-1};
-        for (int j = 0; j < slots; ++j) {
-            if (is_taken[j]) {
-                continue;
-            }
-            ans_t cost{0};
-            for (int d = 0; d < devices; ++d) {
-                if (!is_placed[d]) {
-                    continue;
-                }
-                cost += contrib(d, dev, sol.perm[d], j);
-            }
-            if (slot == -1 || cost < best_cost) {
-                slot = j;
-                best_cost = cost;
-            }
-        }
-
-        is_placed[dev] = 1;
-        is_taken[slot] = 1;
-        sol.perm[dev] = slot;
-        sol.rev_perm[slot] = dev;
-
-        for (int j = 0; j < devices; ++j) {
-            if (j != dev) {
-                IOC[j] += w[idx_dev(dev, j)];
-            }
-        }
-
-    } // O(devices^3)
-
-    sol.twl = calc_twl(sol);
-
-    return sol;
+    free_util();
 }
-
 
 
 // Improvement
-int GotoHeurist::idx(int i, int j) const {
+int NewGotoHeurist::idx(int i, int j) const {
     return i * n + j;
 }
 
-int GotoHeurist::idx_dev(int i, int j) const {
+int NewGotoHeurist::idx_dev(int i, int j) const {
     return i * devices + j;
 }
 
 // GFDR
-bool GotoHeurist::GFDR(GotoHeurist::Solution& sol, int device) { // improvement for the device
+bool NewGotoHeurist::GFDR(NewGotoHeurist::Solution& sol, int device) { // improvement for the device
 //    get_median_1(sol, device);
     get_median(sol, device);
 
@@ -340,19 +281,23 @@ bool GotoHeurist::GFDR(GotoHeurist::Solution& sol, int device) { // improvement 
 
 // Solution
 
-void GotoHeurist::copy(const GotoHeurist::Solution &from, GotoHeurist::Solution &to) const {
+void NewGotoHeurist::copy(const NewGotoHeurist::Solution &from, NewGotoHeurist::Solution &to) const {
     if (!to.perm) {
         to.perm = new int[devices];
     }
     if (!to.rev_perm) {
         to.rev_perm = new int[slots];
     }
+    if (!to.prior) {
+        to.prior = new float[devices];
+    }
     to.twl = from.twl;
     std::memcpy(to.perm, from.perm, devices * sizeof(int));
     std::memcpy(to.rev_perm, from.rev_perm, slots * sizeof(int));
+    std::memcpy(to.prior, from.prior, devices * sizeof(float));
 }
 
-ans_t GotoHeurist::calc_twl(const GotoHeurist::Solution &sol) const {
+ans_t NewGotoHeurist::calc_twl(const NewGotoHeurist::Solution &sol) const {
     ans_t twl{0};
     for (int i = 0; i < devices; ++i) {
         for (int j = i + 1; j < devices; ++j) {
@@ -362,13 +307,13 @@ ans_t GotoHeurist::calc_twl(const GotoHeurist::Solution &sol) const {
     return twl;
 }
 
-void GotoHeurist::swap(GotoHeurist::Solution &sol, int i, int j, ans_t twl_delta) {
+void NewGotoHeurist::swap(NewGotoHeurist::Solution &sol, int i, int j, ans_t twl_delta) {
     sol.twl += twl_delta;
     std::swap(sol.rev_perm[sol.perm[i]], sol.rev_perm[sol.perm[j]]);
     std::swap(sol.perm[i], sol.perm[j]);
 }
 
-ans_t GotoHeurist::delta(const GotoHeurist::Solution &sol, int i, int j) const {
+ans_t NewGotoHeurist::delta(const NewGotoHeurist::Solution &sol, int i, int j) const {
     if (i == j) {
         return 0;
     }
@@ -381,34 +326,34 @@ ans_t GotoHeurist::delta(const GotoHeurist::Solution &sol, int i, int j) const {
         }
         int pos_q = sol.perm[q];
         ret += contrib(i, q, pos_j, pos_q) - contrib(i, q, pos_i, pos_q)
-                + contrib(j, q, pos_i, pos_q) - contrib(j, q, pos_j, pos_q);
+               + contrib(j, q, pos_i, pos_q) - contrib(j, q, pos_j, pos_q);
     }
     ret += contrib(i, j, pos_j, pos_i) - contrib(i, j, pos_i, pos_j);
     return ret;
 }
 
-ans_t GotoHeurist::contrib(int i, int j, int pos_i, int pos_j) const {
+ans_t NewGotoHeurist::contrib(int i, int j, int pos_i, int pos_j) const {
     if (i == j) {
         return 0;
     }
     return contrib(i, j, loc_x[pos_i], loc_x[pos_j], loc_y[pos_i], loc_y[pos_j]);
 }
 
-ans_t GotoHeurist::contrib(int i, int j, int xi, int xj, int yi, int yj) const {
+ans_t NewGotoHeurist::contrib(int i, int j, int xi, int xj, int yi, int yj) const {
     return contrib_x(i, j, xi, xj) + contrib_y(i, j, yi, yj);
 }
 
-ans_t GotoHeurist::contrib_x(int i, int j, int xi, int xj) const {
+ans_t NewGotoHeurist::contrib_x(int i, int j, int xi, int xj) const {
     int pair_id = idx_dev(i, j);
     return w[pair_id] * abs(xi - xj) + (xi == xj ? same_x[pair_id] : (xi < xj ? left_x[pair_id] : right_x[pair_id]));
 }
 
-ans_t GotoHeurist::contrib_y(int i, int j, int yi, int yj) const {
+ans_t NewGotoHeurist::contrib_y(int i, int j, int yi, int yj) const {
     int pair_id = idx_dev(i, j);
     return w[pair_id] * abs(yi - yj) + (yi == yj ? same_y[pair_id] : (yi < yj ? down_y[pair_id] : up_y[pair_id]));
 }
 
-void GotoHeurist::get_vals(ans_t *vals, int N, int step, const ans_t *pref_w, const ans_t *pref_s) {
+void NewGotoHeurist::get_vals(ans_t *vals, int N, int step, const ans_t *pref_w, const ans_t *pref_s) {
     ans_t sum_w{0};
     ans_t sum_s{0};
     for (int i = 0; i < N; ++i) {
@@ -418,7 +363,7 @@ void GotoHeurist::get_vals(ans_t *vals, int N, int step, const ans_t *pref_w, co
     }
 }
 
-void GotoHeurist::get_median(const GotoHeurist::Solution &sol, int device) {
+void NewGotoHeurist::get_median(const NewGotoHeurist::Solution &sol, int device) {
     std::memset(pref_s_x, 0, sizeof(ans_t) * n);
     std::memset(pref_s_y, 0, sizeof(ans_t) * m);
     std::memset(pref_w_x, 0, sizeof(ans_t) * n);
@@ -490,25 +435,20 @@ void GotoHeurist::get_median(const GotoHeurist::Solution &sol, int device) {
     }
 }
 
-std::vector<std::pair<double, std::vector<int>>> GotoHeurist::get_debug_info() const {
-    std::vector<std::pair<double, std::vector<int>>> res;
-    res.reserve(debug_info.size());
-    for (auto [t, sol] : debug_info) {
-        res.emplace_back((double) t / 1e6, std::vector<int>{best.perm, best.perm + devices});
-    }
-    return res;
+std::vector<std::pair<double, std::vector<int>>> NewGotoHeurist::get_debug_info() const {
+    return debug_info;
 }
 
-bool GotoHeurist::need_udpate() const {
+bool NewGotoHeurist::need_udpate() const {
     return debug_interval != -1 && (int)(clock() - last_time) >= debug_interval;
 }
 
-void GotoHeurist::update() {
+void NewGotoHeurist::update() {
     debug_info.emplace_back((clock() - start_time) / 1e6, std::vector<int>{best.perm, best.perm + devices});
     last_time = clock();
 }
 
-std::vector<int> GotoHeurist::solve(int lambda_max_param, int eps_param, double time, double deb_interval, int seed) {
+std::vector<int> NewGotoHeurist::solve(int n1_param, int n2_param, int S_param, int z_param, int lambda_max_param, int eps_param, double time, double deb_interval, int seed) {
     if (seed == -1) {
         std::mt19937 rnd{(uint32_t) std::chrono::high_resolution_clock::now().time_since_epoch().count()};
         seed = (int) rnd();
@@ -521,8 +461,16 @@ std::vector<int> GotoHeurist::solve(int lambda_max_param, int eps_param, double 
         debug_interval = (int)(deb_interval * 1e6);
     }
 
+    n1 = std::min(n1_param, devices);
+    n2 = std::max(n2_param, n1);
+    n2 = std::min(n2, devices);
+    S = S_param;
+    top = (S_param * z_param + 99) / 100;
     eps = std::min(eps_param, m * n);
     lambda_max = lambda_max_param;
+
+    printf("new_goto: seed=%d, debug_interval=%d, "
+           "m=%d, n=%d, n1=%d, n2=%d, S=%d, top=%d, eps=%d, lambda=%d\n", seed, debug_interval, m, n, n1, n2, S, top, eps, lambda_max);
 
     auto max_time = (clock_t)(time * 1e6);
 
@@ -532,26 +480,31 @@ std::vector<int> GotoHeurist::solve(int lambda_max_param, int eps_param, double 
 
     allocate_temp();
 
+    gen_M();
+
     if (debug_interval != -1) {
         update();
     }
 
     while ((clock() - start_time) <= max_time) {
+        sort_M();
+        upd_best();
 
         if (need_udpate()) {
             update();
         }
 
-        Solution initial{SORG()};
-        for (int d = 0; d < devices; ++d) {
-            GFDR(initial, d);
-            if (initial.twl < best.twl) {
-                copy(initial, best);
-            }
-        }
+        int L = rand_int(0, top - 1);
+        ces(M[L]); // heavy
+        sort_M();
+
+        gark(rand_int(1, 16), 5); // maybe heavy too
     }
 
-    if (debug_interval != -1) {
+    sort_M();
+    upd_best();
+
+    if (need_udpate()) {
         update();
     }
 
@@ -562,7 +515,7 @@ std::vector<int> GotoHeurist::solve(int lambda_max_param, int eps_param, double 
     return ret;
 }
 
-void GotoHeurist::print_sol(const GotoHeurist::Solution &sol) const {
+void NewGotoHeurist::print_sol(const NewGotoHeurist::Solution &sol) const {
     for (int i = 0; i < devices; ++i) {
         printf("%d ", sol.perm[i]);
     }
@@ -573,7 +526,7 @@ void GotoHeurist::print_sol(const GotoHeurist::Solution &sol) const {
     printf("\n");
 }
 
-ans_t GotoHeurist::contrib(const Solution& sol, int device) const {
+ans_t NewGotoHeurist::contrib(const Solution& sol, int device) const {
     ans_t ret{0};
     for (int i = 0; i < devices; ++i) {
         if (i != device) {
@@ -583,43 +536,198 @@ ans_t GotoHeurist::contrib(const Solution& sol, int device) const {
     return ret;
 }
 
-GotoHeurist::Solution GotoHeurist::SORG1() {
-    Solution ret{
-        new int[devices],
-        new int[slots],
-        0
-    };
-    std::iota(ret.perm, ret.perm + devices, 0);
-    std::iota(ret.rev_perm, ret.rev_perm + slots, 0);
-    std::shuffle(ret.perm, ret.perm + devices, random_gen);
-    for (int i = 0; i < devices; ++i) {
-        ret.rev_perm[ret.perm[i]] = i;
-    }
-    return ret;
+// GARK part
+
+void NewGotoHeurist::rand_sol(Solution& s) {
+    rand_prior(s.prior);
+    get_perm(s.prior, s.perm, s.rev_perm);
+    s.twl = calc_twl(s);
 }
 
-void GotoHeurist::get_median_1(const GotoHeurist::Solution &sol, int device) {
-    std::vector<ans_t> contr(slots, 0);
-    for (int i = 0; i < slots; ++i) {
-        for (int d = 0; d < devices; ++d) {
-            if (d != device) {
-                ans_t cur_contr = contrib(device, d, i, sol.perm[d]);
-                contr[i] += cur_contr;
+void NewGotoHeurist::rand_prior(float *prior) const {
+    for (int i = 0; i < devices; ++i) {
+        prior[i] = rand_real();
+    }
+}
+
+void NewGotoHeurist::get_perm(const float *prior, int *perm, int *rev_perm) const {
+    for (int i = 0; i < devices; ++i) {
+        rev_perm[i] = i;
+    }
+    std::sort(rev_perm, rev_perm + devices, [prior](int i, int j){
+        return prior[i] < prior[j];
+    });
+    for (int i = 0; i < devices; ++i) {
+        perm[rev_perm[i]] = i;
+    }
+}
+
+
+
+// local search
+
+void NewGotoHeurist::ls(Solution& s, int iters) {
+    bool done = true;
+    int it = 0;
+
+    while (done && (iters != -1 && it < iters)) {
+        done = false;
+
+        for (int device = 0; device < devices; ++device) {
+            if (GFDR(s, device)) {
+                done = true;
             }
         }
+
+        ++it;
     }
-    std::vector<int> S(slots);
-    std::iota(S.begin(), S.end(), 0);
-    std::sort(S.begin(), S.end(), [&](int i, int j){
-        return contr[i] < contr[j];
-    });
-    for (int i = 0; i < eps; ++i) {
-        median_neib[i] = S[i];
-        median_vals[i] = contr[median_neib[i]];
+
+    if (s.twl < best.twl) {
+        copy(s, best);
     }
 }
 
+// utils
 
+void NewGotoHeurist::init_util() {
+    temp_perm = new int[devices];
+    temp_perm_S = new int[S];
+
+    std::iota(temp_perm, temp_perm + devices, 0);
+    std::iota(temp_perm_S, temp_perm_S + S, 0);
+}
+
+void NewGotoHeurist::free_util() {
+    delete[] temp_perm;
+    delete[] temp_perm_S;
+}
+
+void NewGotoHeurist::sort_M(int pref) {
+    if (pref == 0) {
+        return;
+    }
+    if (pref == -1) {
+        pref = S;
+    }
+    std::sort(M, M + pref, [](const Solution &a, const Solution &b) {
+        return a.twl < b.twl;
+    });
+}
+
+void NewGotoHeurist::upd_best() {
+    if (M[0].twl < best.twl) {
+        copy(M[0], best);
+    }
+}
+
+void NewGotoHeurist::gen_M() {
+    for (int i = 0; i < S; ++i) {
+        rand_sol(M[i]);
+    }
+    copy(M[0], best);
+    sort_M();
+    upd_best();
+}
+
+void NewGotoHeurist::gark(int type, int iters) {
+    int sort_pref = 0;
+    if (type == 1) {
+        gark1(M[S]);
+
+        ls(M[S], iters);
+
+        sort_pref = S + 1;
+    } else if (type == 2) {
+        gark2(M[rand_int(0, S-1)], M[rand_int(0, S - 1)], M[S], M[S + 1]);
+
+        ls(M[S], iters);
+        ls(M[S + 1], iters);
+
+        sort_pref = S + 2;
+    } else if (type == 3) {
+        int cnt = rand_int(GARK_BUF_MIN, GARK_BUF_MAX);
+        std::sort(temp_perm_S, temp_perm_S + S); // generate cnt random vals from [0...top-1]
+        std::shuffle(temp_perm_S, temp_perm_S + top, random_gen);
+        for (int i = 0; i < cnt; ++i) {
+            gark_buf[i] = M + temp_perm_S[i];
+        }
+
+        gark3(cnt, M[S]);
+
+        ls(M[S]);
+
+        sort_pref = S + 1;
+    }
+
+    if (sort_pref) {
+        sort_M(sort_pref);
+    }
+}
+
+void NewGotoHeurist::gark1(NewGotoHeurist::Solution &s) {
+    rand_sol(s);
+}
+
+void NewGotoHeurist::gark2(const NewGotoHeurist::Solution &a, const NewGotoHeurist::Solution &b,
+                           NewGotoHeurist::Solution &dest_a, NewGotoHeurist::Solution &dest_b) {
+
+    for (int i = 0; i < n; ++i) {
+        if (rand_int(0, 1)) { // flip fair coin
+            dest_a.prior[i] = a.prior[i];
+            dest_b.prior[i] = b.prior[i];
+        } else {
+            dest_a.prior[i] = b.prior[i];
+            dest_b.prior[i] = a.prior[i];
+        }
+    }
+
+    get_perm(dest_a.prior, dest_a.perm, dest_a.rev_perm);
+    dest_a.twl = calc_twl(dest_a);
+
+    get_perm(dest_b.prior, dest_b.perm, dest_b.rev_perm);
+    dest_b.twl = calc_twl(dest_b);
+}
+
+void NewGotoHeurist::gark3(int cnt, NewGotoHeurist::Solution &dest) {
+    for (int i = 0; i < n; ++i) {
+        dest.prior[i] = 0;
+        for (int j = 0; j < cnt; ++j) {
+            dest.prior[i] += gark_buf[j]->prior[i];
+        }
+        dest.prior[i] /= (float) cnt;
+    }
+
+    get_perm(dest.prior, dest.perm, dest.rev_perm);
+    dest.twl = calc_twl(dest);
+}
+
+void NewGotoHeurist::ces(NewGotoHeurist::Solution &sol) {
+    for (int k = n1; k <= n2; ++k) {
+        for (int device = 0; device < devices; ++device) {
+            GFDR(sol, device);
+            if (sol.twl < best.twl) {
+                copy(sol, best);
+            }
+        }
+
+        int p = rand_int(n1, k);
+        jump(sol, p);
+
+        if (sol.twl < best.twl) {
+            copy(sol, best);
+        }
+    }
+}
+
+void NewGotoHeurist::jump(NewGotoHeurist::Solution &sol, int p) {
+    std::shuffle(temp_perm, temp_perm + n, random_gen);
+    for (int i = 0; i < p; ++i) {
+        int a = temp_perm[i];
+        int b = temp_perm[(i + 1) % p];
+        swap(sol, a, b, 0);
+    }
+    sol.twl = calc_twl(sol);
+}
 
 
 
