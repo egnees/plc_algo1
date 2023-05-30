@@ -144,7 +144,7 @@ Params zdTaskSolver::solve() {
     std::vector<int> best;
     long long best_twl = 1e18;
 
-    ZD_heurist_QAP1 solver(cost, k);
+    ZD_heurist_2 solver(cost, k);
 
     clock_t max_time = 1e6 * time;
     if (seed == -1) {

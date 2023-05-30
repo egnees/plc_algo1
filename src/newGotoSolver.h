@@ -8,6 +8,9 @@
 
 #include "TaskSolver.h"
 
+#include "../algo/new_goto.h"
+#include "../algo/zd_heurist_2.h"
+
 class newGotoTaskSolver : public TaskSolver {
 public:
     Params get_params() override;
@@ -19,6 +22,12 @@ public:
               const py::kwargs& kwargs) override;
 
     void config_defaults();
+
+    std::vector<int> do_local_upd(const std::vector<int>& perm,
+                                  const NewGoto::pin_acc_t& left, const NewGoto::pin_acc_t& same_x,
+                                  const NewGoto::pin_acc_t& up, const NewGoto::pin_acc_t& same_y,
+                                  const NewGoto::mul_t& mul,
+                                  int a = 4, int b = 4) const;
 
 private:
     int rows;
@@ -35,6 +44,7 @@ private:
     int lambda;
     int eps;
     int defaults;
+    int local_upd;
 
     const int DEFAULT_TIME{1};
     const int DEFAULT_SEED{-1};
@@ -47,6 +57,7 @@ private:
     const int DEFAULT_DEFAULTS{1};
     const int DEFAULT_LAMBDA{4};
     const int DEFAULT_EPS{4};
+    const int DEFAULT_LOCAL_UPD{0};
 
     const std::string time_name{"time"};
     const std::string seed_name{"seed"};
@@ -57,6 +68,7 @@ private:
     const std::string lambda_name{"lambda"};
     const std::string eps_name{"eps"};
     const std::string defaults_name{"defaults"};
+    const std::string local_upd_name{"local_upd"};
 };
 
 #endif //PYBIND11_ALGO_NEWGOTOSOLVER_H

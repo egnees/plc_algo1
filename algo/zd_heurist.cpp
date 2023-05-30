@@ -105,7 +105,7 @@ int zd_solve(const std::vector<std::vector<int>>& dist, const std::vector<std::v
 }
 
 int zd_solve(const cost_t& cost, bool verbose = false, int k = 2) {
-    ZD_heurist_QAP1 solver(cost, k);
+    ZD_heurist_2 solver(cost, k);
     auto result = solver.solve();
     int x = calcObv(cost, result);
     if (verbose) {
@@ -146,6 +146,8 @@ cost_t not_random_cost_matrix(int n) {
     return ret;
 }
 
+
+
 cost_t full_random_cost_matrix(int n) {
     std::mt19937 rnd(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     cost_t ret(n, std::vector<std::vector<std::vector<long long>>>(n, std::vector<std::vector<long long>>(n, std::vector<long long>(n, 0))));
@@ -169,7 +171,7 @@ cost_t full_random_cost_matrix(int n) {
 
 void test_heurist_1(int n, int k = 2) {
     auto cost = not_random_cost_matrix(n);
-    ZD_heurist_QAP1 solver(cost, k);
+    ZD_heurist_2 solver(cost, k);
     auto result = solver.solve();
     auto real_result = brute_force(cost);
     printf("heurist: %d\nreal: %d\n", calcObv(cost, result), real_result);
@@ -177,7 +179,7 @@ void test_heurist_1(int n, int k = 2) {
 
 void test_heurist_2(int n, int k = 2) {
     auto cost = full_random_cost_matrix(n);
-    ZD_heurist_QAP1 solver(cost, k);
+    ZD_heurist_2 solver(cost, k);
     auto result = solver.solve();
     for (int i : result) {
         printf("%d ", i);

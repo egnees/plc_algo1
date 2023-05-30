@@ -1,4 +1,9 @@
-#include "ZD_heurist_QAP1.h"
+
+//
+// Created by Sergei Yakovlev <3gnees@gmail.com> on 30.05.2023.
+//
+
+#include "zd_heurist_2.h"
 
 #include <random>
 #include <cstring>
@@ -9,25 +14,25 @@
 
 // Solution
 
-ZD_heurist_QAP1::Solution::Solution() : p{nullptr}, obv{-1}, size{0} {}
+ZD_heurist_2::Solution::Solution() : p{nullptr}, obv{-1}, size{0} {}
 
-ZD_heurist_QAP1::Solution::Solution(int* perm, long long obvPerm, int n) : p{perm}, obv{obvPerm}, size{n} {}
+ZD_heurist_2::Solution::Solution(int* perm, long long obvPerm, int n) : p{perm}, obv{obvPerm}, size{n} {}
 
-ZD_heurist_QAP1::Solution::Solution(const ZD_heurist_QAP1::Solution& other) {
+ZD_heurist_2::Solution::Solution(const ZD_heurist_2::Solution& other) {
     p = new int[other.size];
     memcpy(p, other.p, other.size << 2); // assert that sizeof(int) == 4
     obv = other.obv;
     size = other.size;
 }
 
-ZD_heurist_QAP1::Solution::Solution(ZD_heurist_QAP1::Solution&& other) noexcept {
+ZD_heurist_2::Solution::Solution(ZD_heurist_2::Solution&& other) noexcept {
     p = other.p;
     other.p = nullptr;
     obv = other.obv;
     size = other.size;
 }
 
-ZD_heurist_QAP1::Solution& ZD_heurist_QAP1::Solution::operator=(const ZD_heurist_QAP1::Solution& other) {
+ZD_heurist_2::Solution& ZD_heurist_2::Solution::operator=(const ZD_heurist_2::Solution& other) {
     if (&other == this) {
         return *this;
     }
@@ -42,7 +47,7 @@ ZD_heurist_QAP1::Solution& ZD_heurist_QAP1::Solution::operator=(const ZD_heurist
     return *this;
 }
 
-ZD_heurist_QAP1::Solution& ZD_heurist_QAP1::Solution::operator=(ZD_heurist_QAP1::Solution&& other) noexcept {
+ZD_heurist_2::Solution& ZD_heurist_2::Solution::operator=(ZD_heurist_2::Solution&& other) noexcept {
     // size == other.size
     delete[] p;
     p = other.p;
@@ -52,11 +57,11 @@ ZD_heurist_QAP1::Solution& ZD_heurist_QAP1::Solution::operator=(ZD_heurist_QAP1:
     return *this;
 }
 
-ZD_heurist_QAP1::Solution::~Solution() {
+ZD_heurist_2::Solution::~Solution() {
     delete[] p;
 }
 
-void ZD_heurist_QAP1::Solution::print() const {
+void ZD_heurist_2::Solution::print() const {
     for (int i = 0; i < size; ++i) {
         // printf("%d ", p[i]);
     }
@@ -65,13 +70,13 @@ void ZD_heurist_QAP1::Solution::print() const {
 
 // List
 
-ZD_heurist_QAP1::List::List() : a{nullptr}, size{0}, worst{nullptr}, K{0} {}
+ZD_heurist_2::List::List() : a{nullptr}, size{0}, worst{nullptr}, K{0} {}
 
-ZD_heurist_QAP1::List::List(int k) : size{0}, worst{nullptr}, K{k} {
+ZD_heurist_2::List::List(int k) : size{0}, worst{nullptr}, K{k} {
     a = new Solution*[K];
 }
 
-ZD_heurist_QAP1::List::List(const ZD_heurist_QAP1::List& other) {
+ZD_heurist_2::List::List(const ZD_heurist_2::List& other) {
     // puts("List(cost List& other)");
     K = other.K;
     a = new Solution*[K];
@@ -82,7 +87,7 @@ ZD_heurist_QAP1::List::List(const ZD_heurist_QAP1::List& other) {
     worst = a + (other.worst - other.a);
 }
 
-ZD_heurist_QAP1::List::List(ZD_heurist_QAP1::List&& other) noexcept {
+ZD_heurist_2::List::List(ZD_heurist_2::List&& other) noexcept {
     K = other.K;
     a = other.a;
     worst = other.worst;
@@ -92,7 +97,7 @@ ZD_heurist_QAP1::List::List(ZD_heurist_QAP1::List&& other) noexcept {
     other.size = 0;
 }
 
-ZD_heurist_QAP1::List& ZD_heurist_QAP1::List::operator=(const ZD_heurist_QAP1::List& other) {
+ZD_heurist_2::List& ZD_heurist_2::List::operator=(const ZD_heurist_2::List& other) {
     if (this == &other) {
         return *this;
     }
@@ -107,7 +112,7 @@ ZD_heurist_QAP1::List& ZD_heurist_QAP1::List::operator=(const ZD_heurist_QAP1::L
     return *this;
 }
 
-ZD_heurist_QAP1::List& ZD_heurist_QAP1::List::operator=(ZD_heurist_QAP1::List&& other) noexcept {
+ZD_heurist_2::List& ZD_heurist_2::List::operator=(ZD_heurist_2::List&& other) noexcept {
     delete[] a;
     K = other.K;
     a = other.a;
@@ -119,11 +124,11 @@ ZD_heurist_QAP1::List& ZD_heurist_QAP1::List::operator=(ZD_heurist_QAP1::List&& 
     return *this;
 }
 
-ZD_heurist_QAP1::List::~List() {
+ZD_heurist_2::List::~List() {
     delete[] a;
 }
 
-void ZD_heurist_QAP1::List::add(ZD_heurist_QAP1::Solution* s) {
+void ZD_heurist_2::List::add(ZD_heurist_2::Solution* s) {
     a[size] = s;
     if (worst == nullptr || (*worst)->obv < s->obv) {
         worst = a + size;
@@ -131,7 +136,7 @@ void ZD_heurist_QAP1::List::add(ZD_heurist_QAP1::Solution* s) {
     ++size;
 }
 
-void ZD_heurist_QAP1::List::clear() {
+void ZD_heurist_2::List::clear() {
     worst = nullptr;
     size = 0;
 }
@@ -139,17 +144,22 @@ void ZD_heurist_QAP1::List::clear() {
 // ZD_heurist_QAP1
 
 // constructor
-ZD_heurist_QAP1::ZD_heurist_QAP1(const cost_t& cost, int maxListSize)
-        : K{maxListSize}, d{0}, n{(int) cost.size()}, n2{n * n}, n3{n * n * n},
-        n4{n * n * n * n}, solutionFactory{n} {
+ZD_heurist_2::ZD_heurist_2(int n1, int maxListSize)
+        : K{maxListSize}, d{0}, n{n1}, n2{n * n}, n3{n * n * n},
+          n4{n * n * n * n}, solutionFactory{n} {
 
     C = new long long[n4];
+    C1 = new long long[n2];
+}
 
+// setters
+
+void ZD_heurist_2::set_cost(const cost_t& cost) { // size(cost) = n x n x n x n
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
             for (int k = 0; k < n; ++k) {
                 for (int l = 0; l < n; ++l) {
-                    
+
                     if (cost[i][i][k][l] != 0 || cost[i][j][k][k] != 0) {
                         throw std::runtime_error("Cost not zero diag");
                     }
@@ -165,11 +175,20 @@ ZD_heurist_QAP1::ZD_heurist_QAP1(const cost_t& cost, int maxListSize)
     }
 }
 
-ZD_heurist_QAP1::~ZD_heurist_QAP1() {
-    delete[] C;
+void ZD_heurist_2::set_dp_cost(const dev_pos_cost_t &dp_cost) { // size(dp_cost) = n x n
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            C1[idx(i, j)] = dp_cost[i][j];
+        }
+    }
 }
 
-std::vector<int> ZD_heurist_QAP1::solve(int time, int seed, int debug_t, double start_t) {
+ZD_heurist_2::~ZD_heurist_2() {
+    delete[] C;
+    delete[] C1;
+}
+
+std::vector<int> ZD_heurist_2::solve(int time, int seed, int debug_t, double start_t) {
 
     debug_interval = debug_t;
 
@@ -179,29 +198,22 @@ std::vector<int> ZD_heurist_QAP1::solve(int time, int seed, int debug_t, double 
     printf("time=%.2g, ", time / 1e6);
     printf("debug_interval=%d\n", debug_interval);
 
-    int* p = randPerm(seed);
+    int* p = randPerm(seed); // here seed = -1 is ok
     Solution center = Solution(p, obv(p), n);
     Solution bfs = center;
 
     std::mt19937 rnd(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
-    int c = 0;
-
-
-    bool check_time = false;
-    // clock_t max_time;
-    // clock_t start;
-    if (time != -1) {
-        check_time = true;
-        max_time = time;
-        start = clock();
-    }
-
+    start = clock();
     clock_t last = clock();
 
-    debug_info.emplace_back(start_t + ((double)(clock() - start)) / 1e6, std::vector<int>{bfs.p, bfs.p + n});
+    if (debug_interval != -1) {
+        debug_info.emplace_back(start_t + ((double) (clock() - start)) / 1e6, std::vector<int>{bfs.p, bfs.p + n});
+    }
 
-    while (!check_time || (clock() - start) <= max_time) {
+    int c = 0;
+
+    while (true) {
         d = n - (rnd() % 3 + 2); // n-4 <= d <= n-2
 
         if (d <= 0) {
@@ -245,11 +257,11 @@ std::vector<int> ZD_heurist_QAP1::solve(int time, int seed, int debug_t, double 
     return {bfs.p, bfs.p + n};
 }
 
-std::vector<std::pair<double, std::vector<int>>> ZD_heurist_QAP1::get_debug_info() const {
+std::vector<std::pair<double, std::vector<int>>> ZD_heurist_2::get_debug_info() const {
     return debug_info;
 }
 
-ZD_heurist_QAP1::Solution ZD_heurist_QAP1::bestMemory(const List& memory) const {
+ZD_heurist_2::Solution ZD_heurist_2::bestMemory(const List& memory) const {
     assert(memory.size >= 1);
 
     int best = 0;
@@ -263,7 +275,7 @@ ZD_heurist_QAP1::Solution ZD_heurist_QAP1::bestMemory(const List& memory) const 
     return *memory.a[best];
 }
 
-void ZD_heurist_QAP1::QAP_iter(Solution& center, Solution& bfs, Solution& bfs2, List& memory) {
+void ZD_heurist_2::QAP_iter(Solution& center, Solution& bfs, Solution& bfs2, List& memory) {
 
     // puts("QAP iter...");
 
@@ -316,7 +328,7 @@ void ZD_heurist_QAP1::QAP_iter(Solution& center, Solution& bfs, Solution& bfs2, 
     }
 }
 
-bool ZD_heurist_QAP1::inlist(List& x, Solution* s) {
+bool ZD_heurist_2::inlist(List& x, Solution* s) {
     for (int i = 0; i < x.size; ++i) {
         if (x.a[i]->obv == s->obv && deltaP(x.a[i]->p, s->p) == 0) {
             return false;
@@ -339,7 +351,7 @@ bool ZD_heurist_QAP1::inlist(List& x, Solution* s) {
     return true;
 }
 
-void ZD_heurist_QAP1::updLists(List& list0, List& list1, List& list2, int dp, const Solution& bfs) {
+void ZD_heurist_2::updLists(List& list0, List& list1, List& list2, int dp, const Solution& bfs) {
     // puts("\nbfs:");
     bfs.print();
     for (int i = 0; i < list0.size; ++i) {
@@ -380,7 +392,7 @@ void ZD_heurist_QAP1::updLists(List& list0, List& list1, List& list2, int dp, co
     }
 }
 
-void ZD_heurist_QAP1::newBfs(List& list0, Solution& bfs, Solution& bfs2) {
+void ZD_heurist_2::newBfs(List& list0, Solution& bfs, Solution& bfs2) {
 
     // bfs inited, bfs may be not
 
@@ -425,17 +437,20 @@ void ZD_heurist_QAP1::newBfs(List& list0, Solution& bfs, Solution& bfs2) {
     }
 }
 
-long long ZD_heurist_QAP1::obv(const int* w) const {
+long long ZD_heurist_2::obv(const int* w) const {
     long long ret = 0;
     for (int i = 0; i + 1 < n; ++i) {
         for (int j = i + 1; j < n; ++j) {
             ret += C[idx(i, j, w[i], w[j])];
         }
     }
+    for (int i = 0; i < n; ++i) {
+        ret += C1[idx(i, w[i])];
+    }
     return ret;
 }
 
-int* ZD_heurist_QAP1::randPerm(int seed) const {
+int* ZD_heurist_2::randPerm(int seed) const {
     if (seed == -1) {
         std::mt19937 rnd(std::chrono::high_resolution_clock::now().time_since_epoch().count());
         seed = rnd();
@@ -449,19 +464,20 @@ int* ZD_heurist_QAP1::randPerm(int seed) const {
     return p;
 }
 
-long long ZD_heurist_QAP1::deltaObv(int r, int s, const int* w) const {
+long long ZD_heurist_2::deltaObv(int r, int s, const int* w) const {
     long long ret = 0;
     for (int i = 0; i < n; ++i) {
         if (i != r && i != s) {
             ret += C[idx(r, i, w[s], w[i])] - C[idx(r, i, w[r], w[i])]
-                     + C[idx(s, i, w[r], w[i])] - C[idx(s, i, w[s], w[i])];
+                   + C[idx(s, i, w[r], w[i])] - C[idx(s, i, w[s], w[i])];
         }
     }
     ret += C[idx(s, r, w[r], w[s])] - C[idx(s, r, w[s], w[r])];
+    ret += C1[idx(s, w[r])] - C1[idx(s, w[s])] + C1[idx(r, w[s])] - C1[idx(r, w[r])];
     return ret;
 }
 
-int ZD_heurist_QAP1::deltaP(const int* p, const int* w) const {
+int ZD_heurist_2::deltaP(const int* p, const int* w) const {
     int ret = 0;
     for (int i = 0; i < n; ++i) {
         if (p[i] != w[i]) {
@@ -471,7 +487,7 @@ int ZD_heurist_QAP1::deltaP(const int* p, const int* w) const {
     return ret;
 }
 
-int ZD_heurist_QAP1::deltaDeltaP(const int* w, const int* bfs, int j, int k) const {
+int ZD_heurist_2::deltaDeltaP(const int* w, const int* bfs, int j, int k) const {
     int ret = 0;
 
     if (w[j] == bfs[j]) {
@@ -489,15 +505,19 @@ int ZD_heurist_QAP1::deltaDeltaP(const int* w, const int* bfs, int j, int k) con
     return ret;
 }
 
-int ZD_heurist_QAP1::idx(int i, int j, int k, int l) const {
+int ZD_heurist_2::idx(int i, int j, int k, int l) const {
     return i * n3 + j * n2 + k * n + l;
+}
+
+int ZD_heurist_2::idx(int i, int j) const {
+    return i * n + j;
 }
 
 // SolutionFactory
 
-ZD_heurist_QAP1::SolutionFactory::SolutionFactory(int size) : n{size} {}
+ZD_heurist_2::SolutionFactory::SolutionFactory(int size) : n{size} {}
 
-ZD_heurist_QAP1::Solution *ZD_heurist_QAP1::SolutionFactory::create(const int* p, long long obv) {
+ZD_heurist_2::Solution *ZD_heurist_2::SolutionFactory::create(const int* p, long long obv) {
     Solution* ret;
     if (!freed.empty()) {
         ret = freed.back();
@@ -513,26 +533,26 @@ ZD_heurist_QAP1::Solution *ZD_heurist_QAP1::SolutionFactory::create(const int* p
     return ret;
 }
 
-void ZD_heurist_QAP1::SolutionFactory::free() {
+void ZD_heurist_2::SolutionFactory::free() {
     for (Solution* s : own) {
         freed.push_back(s);
     }
     own.clear();
 }
 
-void ZD_heurist_QAP1::SolutionFactory::freeLast() {
+void ZD_heurist_2::SolutionFactory::freeLast() {
     freed.push_back(own.back());
     own.pop_back();
 }
 
-void ZD_heurist_QAP1::SolutionFactory::clear() {
+void ZD_heurist_2::SolutionFactory::clear() {
     free();
     for (Solution* s : freed) {
         delete s;
     }
 }
 
-ZD_heurist_QAP1::SolutionFactory::~SolutionFactory() {
+ZD_heurist_2::SolutionFactory::~SolutionFactory() {
     clear();
 }
 

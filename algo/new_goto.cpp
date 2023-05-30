@@ -137,6 +137,7 @@ void NewGotoHeurist::allocate_permanent() {
 
     best.perm = new int[devices];
     best.rev_perm = new int[slots];
+    best.prior = new float[devices];
 }
 
 void NewGotoHeurist::deallocate_permanent() {
@@ -175,6 +176,7 @@ void NewGotoHeurist::allocate_temp() {
     for (int i = 0; i < eps; ++i) {
         sols[i].perm = new int[devices];
         sols[i].rev_perm = new int[slots];
+        sols[i].prior = new float[devices];
     }
 
     M = new Solution[S + 2];
@@ -200,6 +202,7 @@ void NewGotoHeurist::deallocate_temp() {
     for (int i = 0; i < eps; ++i) {
         delete[] sols[i].perm;
         delete[] sols[i].rev_perm;
+        delete[] sols[i].prior;
     }
 
     delete[] sols;
@@ -248,6 +251,7 @@ bool NewGotoHeurist::GFDR(NewGotoHeurist::Solution& sol, int device) { // improv
     // lambda_max >= 3
 
     ans_t total_delta[eps];
+    int devices[eps];
     for (int q = 0; q < eps; ++q) {
         copy(sol, sols[q]);
 
@@ -256,18 +260,19 @@ bool NewGotoHeurist::GFDR(NewGotoHeurist::Solution& sol, int device) { // improv
 
         swap(sols[q], device, swap_device, swap_delta);
         total_delta[q] = swap_delta; // >= 0
+        devices[q] = swap_device;
     }
 
     for (int lambda = 3; lambda <= lambda_max; ++lambda) {
         for (int q = 0; q < eps; ++q) {
-//            get_median_1(sols[q], device);
-            get_median(sols[q], device);
+            get_median(sols[q], devices[q]);
 
             int swap_device = sols[q].rev_perm[median_neib[0]];
-            ans_t swap_delta = delta(sols[q], device, swap_device);
+            ans_t swap_delta = delta(sols[q], devices[q], swap_device);
 
-            swap(sols[q], device, swap_device, swap_delta);
+            swap(sols[q], devices[q], swap_device, swap_delta);
             total_delta[q] += swap_delta;
+            devices[q] = swap_device;
 
             if (total_delta[q] < 0) { // improved
                 copy(sols[q], sol);
@@ -498,7 +503,7 @@ std::vector<int> NewGotoHeurist::solve(int n1_param, int n2_param, int S_param, 
         ces(M[L]); // heavy
         sort_M();
 
-        gark(rand_int(1, 16), 5); // maybe heavy too
+        gark(rand_int(1, 100), 5); // maybe heavy too
     }
 
     sort_M();

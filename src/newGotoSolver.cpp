@@ -5,8 +5,6 @@
 
 #include "newGotoSolver.h"
 
-#include "../algo/new_goto.h"
-
 #include <vector>
 
 using namespace NewGoto;
@@ -61,6 +59,8 @@ void newGotoTaskSolver::init(const py::str &input_path, const py::str &output_pa
     get_value_double(kwargs, debug_t_name, debug_t, DEFAULT_DEBUG_T);
 
     get_value(kwargs, defaults_name, defaults, DEFAULT_DEFAULTS);
+
+    get_value(kwargs, local_upd_name, local_upd, DEFAULT_LOCAL_UPD);
 }
 
 Params newGotoTaskSolver::solve() {
@@ -121,7 +121,11 @@ Params newGotoTaskSolver::solve() {
 
     auto start = clock();
 
-    auto perm = solver.solve(n1, n2, S, z, lambda, eps, time, debug_t, seed);
+    auto perm = solver.solve(n1, n2, S, z, lambda, eps, !local_upd ? time : std::max(0.1, time - 0.5), debug_t, seed);
+
+    if (local_upd) {
+        perm = do_local_upd(perm, left, same_x, up, same_y, mul, 4, 4);
+    }
 
     double cpu_time = static_cast<double>(clock() - start) / 1e6;
 
@@ -165,3 +169,26 @@ void newGotoTaskSolver::config_defaults() {
     lambda = 4;
     eps = 4;
 }
+
+std::vector<int>
+newGotoTaskSolver::do_local_upd(const std::vector<int> &perm, const pin_acc_t &left, const pin_acc_t &same_x,
+                                const pin_acc_t &up, const pin_acc_t &same_y, const mul_t &mul,
+                                int a, int b) const {
+    if (a > rows || b > cols) {
+        return perm;
+    }
+
+    using v = std::vector<long long>;
+    using vv = std::vector<v>;
+    using vvv = std::vector<vv>;
+
+    ZD_heurist_2::cost_t cost(device_count, vvv(device_count, vv(device_count, v(device_count, 0ll))));
+    ZD_heurist_2::dev_pos_cost_t dp_cost(device_count, v(device_count, 0ll));
+
+    for (int i = 0; i <= a - rows; ++i) {
+        for (int j = 0; j <= b - cols; ++j) {
+
+        }
+    }
+}
+

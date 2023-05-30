@@ -88,7 +88,7 @@ cost_t full_random_cost_matrix(int n, uint32_t seed) {
 
 ans_t zd_solve(const cost_t &cost, int seed, double time) {
     int k = 2;
-    ZD_heurist_QAP1 solver(cost, k);
+    ZD_heurist_2 solver(cost, k);
     auto start = clock();
     ans_t best = 1e18;
     clock_t max_time = time * 1e6;
